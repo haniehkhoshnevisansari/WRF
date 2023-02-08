@@ -1,0 +1,61 @@
+from netCDF4 import Dataset
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
+import cartopy.crs as crs
+import datetime
+#from cartopy.feature import NaturalEarthFeature
+
+from wrf import (getvar, interplevel, to_np, latlon_coords, get_cartopy, cartopy_xlim, cartopy_ylim)
+
+# Open the NetCDF file
+
+st=datetime.datetime(2006,9,13,0)
+dt=datetime.timedelta(hours=24)
+i=0
+di=10
+
+# In[] Surface wind and pressure 
+for i in range (5):
+    T=str(st+i*dt)
+
+    d=T.split(" ")[0]
+    h=T.split(" ")[1]
+    ncfile = Dataset("/glade/u/home/hansari/scratch/ATM255/WRFV3/run/wrfout_d02_"+d+"_"+h)
+
+    t = getvar(ncfile, "slp")
+    u = getvar(ncfile, "uvmet10")[0,:,:]
+    v = getvar(ncfile, "uvmet10")[1,:,:]
+    
+    # Get the lat/lon coordinates
+    lats, lons = latlon_coords(t)
+
+    # Get the map projection information
+    cart_proj = get_cartopy(t)
+
+    # Create the figure
+    fig = plt.figure(figsize=(12,9))
+    ax = plt.axes(projection=cart_proj)
+
+    # coastlines
+    ax.coastlines('50m', linewidth=0.8)
+
+    levels = np.arange(980, 1024, 4)
+    #contours = plt.contour(to_np(lons), to_np(lats), to_np(t), levels=levels, colors="black", transform=crs.PlateCarree())
+    #plt.clabel(contours, inline=1, fontsize=10, fmt="%i")
+    plt.contourf(to_np(lons), to_np(lats), to_np(t), levels=levels, transform=crs.PlateCarree(), extend='both', cmap=get_cmap("jet"))
+    plt.colorbar(ax=ax,shrink=.6,extend='both')# rh
+    plt.quiver(to_np(lons[::di,::di]),to_np(lats[::di,::di]), to_np(u[::di,::di]),to_np(v[::di,::di]), transform=crs.PlateCarree(), scale=500)
+
+    # Set the map bounds
+    ax.set_xlim(cartopy_xlim(t))
+    ax.set_ylim(cartopy_ylim(t))
+
+    ax.gridlines()
+    gl=ax.gridlines(draw_labels=True)
+    gl.top_labels=False
+    gl.right_labels=False
+    plt.title("10-m Wind and Sea-level Pressure (hPa) "+d+" 00")
+    plt.savefig("surfwp_"+d+h+".png")
+    ncfile.close()
+    #plt.show()
