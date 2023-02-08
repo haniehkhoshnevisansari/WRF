@@ -1,0 +1,63 @@
+from netCDF4 import Dataset
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
+import cartopy.crs as crs
+import datetime
+#from cartopy.feature import NaturalEarthFeature
+
+from wrf import (getvar, interplevel, to_np, latlon_coords, get_cartopy, cartopy_xlim, cartopy_ylim)
+
+# Open the NetCDF file
+
+st=datetime.datetime(2006,9,13,0)
+dt=datetime.timedelta(hours=24)
+i=0
+di=20
+
+# In[] column integral vapor
+for i in range (5):
+    T=str(st+i*dt)
+
+    d=T.split(" ")[0]
+    h=T.split(" ")[1]
+    ncfile = Dataset("/glade/u/home/hansari/scratch/ATM255/WRFV3/run/wrfout_d02_"+d+"_"+h)
+
+    
+    t = getvar(ncfile, "pressure")
+    u = getvar(ncfile, "ua")/0.514444444
+    v = getvar(ncfile, "ua")/0.514444444
+    
+    u_850 = interplevel(u, t, 850)
+    v_850 = interplevel(v, t, 850)
+    u_200 = interplevel(u, t, 200)
+    v_200 = interplevel(v, t, 200)
+    
+    # Get the lat/lon coordinates
+    lats, lons = latlon_coords(t)
+
+    # Get the map projection information
+    cart_proj = get_cartopy(t)
+
+    # Create the figure
+    fig = plt.figure(figsize=(12,9))
+    ax = plt.axes(projection=cart_proj)
+
+    # coastlines
+    ax.coastlines('50m', linewidth=0.8)
+
+    plt.barbs(to_np(lons[::di,::di]),to_np(lats[::di,::di]), to_np(u_850[::di,::di]),to_np(v_850[::di,::di]), transform=crs.PlateCarree(),length=5, color="r")
+    plt.barbs(to_np(lons[::di,::di]),to_np(lats[::di,::di]), to_np(u_200[::di,::di]),to_np(v_200[::di,::di]), transform=crs.PlateCarree(),length=5, color="b")
+    
+    # Set the map bounds
+    ax.set_xlim(cartopy_xlim(t))
+    ax.set_ylim(cartopy_ylim(t))
+
+    ax.gridlines()
+    gl=ax.gridlines(draw_labels=True)
+    gl.top_labels=False
+    gl.right_labels=False
+    plt.title("200-hPa wind (blue) and 850-hPa wind (red) (knots) "+d+" 00")
+    plt.savefig("wind_"+d+h+".png")
+    ncfile.close()
+    #plt.show()
