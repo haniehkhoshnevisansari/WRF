@@ -1,21 +1,75 @@
-from matplotlib.cm import get_cmap
-import matplotlib.pyplot as plt
-import netCDF4
 from netCDF4 import Dataset
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
 import cartopy.crs as crs
 import datetime
-import numpy as np
+#from cartopy.feature import NaturalEarthFeature
 
-from wrf import (getvar, to_np, latlon_coords, get_cartopy, cartopy_xlim, cartopy_ylim)
-# Open the netCDF file
-st = datetime.datetime(2006, 9, 13, 0)
-dt = datetime.timedelta(hours=24)
+from wrf import (getvar, interplevel, to_np, latlon_coords, get_cartopy, cartopy_xlim, cartopy_ylim)
+
+# Open the NetCDF file
+
+st=datetime.datetime(2006,9,13,0)
+dt=datetime.timedelta(hours=24)
 i=0
 
-for i in range(5):
-    T=str(st+i*dt)
-    
-    d=T.split(" ")[0]
-    h=T.split(" ")[1]
-    ncfile = Dataset("/glade/u/home/hansari/scratch/ATM255/WRFV3/run/wrfout_d02_" +d+ "_" + h)
+# In[] 500 geopt vorticity 
+T=str(st+i*dt)
+
+d=T.split(" ")[0]
+h=T.split(" ")[1]
+ncfile = Dataset("/glade/u/home/hansari/scratch/ATM255/WRFV3/run/wrfout_d01_"+d+"_"+h)
+
+# Extract the pressure, geopotential height, and wind variables
+p = getvar(ncfile, "pw")
+H1=ncfile["HGT"][0,:,:]
+
+
+# Get the lat/lon coordinates
+lats, lons = latlon_coords(p)
+
+# Get the map projection information
+cart_proj = get_cartopy(p)
+
+# Create the figure
+fig = plt.figure(figsize=(12,9))
+ax = plt.axes(projection=cart_proj)
+# coastlines
+ax.coastlines('50m', linewidth=0.8)
+
+levels = np.arange(0, 8000, 300)
+contours = plt.contour(to_np(lons), to_np(lats), to_np(H1), levels=levels, colors="black", transform=crs.PlateCarree())
+plt.clabel(contours, inline=1, fontsize=10, fmt="%i")
+
+# Set the map bounds
+ax.set_xlim(cartopy_xlim(p))
+ax.set_ylim(cartopy_ylim(p))
+ax.gridlines()
+gl=ax.gridlines(draw_labels=True)
+gl.top_labels=False
+gl.right_labels=False
+
+# domain 2
+ncfile = Dataset("/glade/u/home/hansari/scratch/ATM255/WRFV3/run/wrfout_d02_"+d+"_"+h)
+
+# Extract the pressure, geopotential height, and wind variables
+p = getvar(ncfile, "pw")
+H2=ncfile["HGT"][0,:,:]
+lats, lons = latlon_coords(p)
+levels = np.arange(0, 8000, 300)
+contours = plt.contour(to_np(lons), to_np(lats), to_np(H2), levels=levels, colors="b", transform=crs.PlateCarree())
+plt.clabel(contours, inline=1, fontsize=10, fmt="%i")
+
+H2*=0
+H2[0,:]=1
+H2[:,0]=1
+H2[np.shape(H2)[0]-1,:]=1
+H2[:,np.shape(H2)[1]-1]=1
+contours = plt.contour(to_np(lons), to_np(lats), to_np(H2), levels=1, colors="r", transform=crs.PlateCarree(),linewidths=3)
+
+plt.title("Domain Region and Topography (RED:Domain 2, Black:Domain 1 topography, Blue: Domain 2 topography)")
+plt.savefig("Domianterrain.png")
+ncfile.close()
+#plt.show()
     
