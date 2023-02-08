@@ -56,3 +56,4 @@ for i in range (5):
     plt.savefig("columnvapor_"+d+h+".png")
     ncfile.close()
     #plt.show()
+    
